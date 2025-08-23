@@ -79,28 +79,45 @@ export class AllureUtils {
    * Add test issue
    */
   static issue(name: string, url?: string) {
-    allure.issue(name, url);
+    if (url) {
+      allure.issue(name, url);
+    } else {
+      allure.issue(name, '');
+    }
   }
 
   /**
    * Add test TMS link
    */
   static tms(name: string, url?: string) {
-    allure.tms(name, url);
+    if (url) {
+      allure.tms(name, url);
+    } else {
+      allure.tms(name, '');
+    }
   }
 
   /**
    * Add step with description
    */
   static step(name: string, fn: () => void | Promise<void>) {
-    return allure.step(name, fn);
+    return allure.step(name, async () => {
+      const result = fn();
+      if (result instanceof Promise) {
+        await result;
+      }
+    });
   }
 
   /**
    * Add attachment
    */
   static attachment(name: string, content: Buffer | string, type?: string) {
-    allure.attachment(name, content, type);
+    if (type) {
+      allure.attachment(name, content, type);
+    } else {
+      allure.attachment(name, content, 'text/plain');
+    }
   }
 
   /**

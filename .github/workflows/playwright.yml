@@ -26,6 +26,7 @@ jobs:
   test:
     name: Run Playwright Tests
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     strategy:
       fail-fast: false
       matrix:
@@ -41,20 +42,72 @@ jobs:
         node-version: 18
         
     - name: Install dependencies
-      run: npm i
+      run: npm ci
       
+    - name: Check Node.js and npm versions
+      run: |
+        echo "Node.js version: $(node --version)"
+        echo "npm version: $(npm --version)"
+        echo "Current directory: $(pwd)"
+        echo "Directory contents:"
+        ls -la
+        
     - name: Install Playwright browsers
       run: npx playwright install --with-deps
       
+    - name: Verify browser installation
+      run: |
+        echo "Checking browser installations..."
+        npx playwright --version
+        echo "Browser binaries:"
+        ls -la ~/.cache/ms-playwright/ || echo "No browser cache found"
+        
+    - name: Test network connectivity
+      run: |
+        echo "Testing network connectivity to target website..."
+        curl -I https://www.saucedemo.com/ || echo "curl failed, trying wget..."
+        wget --spider https://www.saucedemo.com/ || echo "wget also failed"
+        echo "Network test completed"
+      
+    - name: Run simple test first
+      run: |
+        echo "Running a simple test to verify setup..."
+        npx playwright test --list || echo "Test listing failed"
+        
     - name: Run tests on ${{ matrix.browser }}
-      run: npx playwright test --project="${{ matrix.browser }}"
+      id: test-run
+      timeout-minutes: 10
+      run: npx playwright test --project="${{ matrix.browser }}" --reporter=allure-playwright
+      
+    - name: Check test exit status
+      if: always()
+      run: |
+        echo "Test exit status: ${{ steps.test-run.outcome }}"
+        echo "Test exit code: ${{ steps.test-run.conclusion }}"
+        echo "Test step result: ${{ steps.test-run.outputs }}"
+        
+    - name: List test results (for debugging)
+      if: always()
+      run: |
+        echo "=== Test Results Directory ==="
+        ls -la allure-results/ || echo "No allure-results directory"
+        echo "=== Test Results Directory ==="
+        ls -la test-results/ || echo "No test-results directory"
+        echo "=== Screenshots Directory ==="
+        ls -la screenshots/ || echo "No screenshots directory"
+        echo "=== Videos Directory ==="
+        ls -la videos/ || echo "No videos directory"
       
     - name: Upload test results
       uses: actions/upload-artifact@v4
       if: always()
       with:
         name: allure-results-${{ matrix.browser }}
-        path: allure-results/
+        path: |
+          allure-results/
+          test-results/
+          screenshots/
+          videos/
         retention-days: 30
 
   # Stage 2: Generate Allure Report
