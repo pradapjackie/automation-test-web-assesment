@@ -1,0 +1,150 @@
+name: Playwright Tests with Allure Reports
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+  workflow_dispatch:
+    inputs:
+      browsers:
+        description: 'Select browsers to test'
+        required: false
+        default: 'all'
+        type: choice
+        options:
+          - all
+          - chromium
+          - firefox
+          - webkit
+          - mobile
+
+
+
+jobs:
+  # Stage 1: Run Playwright Tests
+  test:
+    name: Run Playwright Tests
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: ${{ fromJson('["chromium", "firefox", "webkit", "Mobile Chrome", "Mobile Safari"]') }}
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: 18
+        
+    - name: Install dependencies
+      run: npm i
+      
+    - name: Install Playwright browsers
+      run: npx playwright install --with-deps
+      
+    - name: Run tests on ${{ matrix.browser }}
+      run: npx playwright test --project="${{ matrix.browser }}"
+      
+    - name: Upload test results
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: allure-results-${{ matrix.browser }}
+        path: allure-results/
+        retention-days: 30
+
+  # Stage 2: Generate Allure Report
+  generate-report:
+    name: Generate Allure Report
+    needs: test
+    runs-on: ubuntu-latest
+    if: always()
+    container:
+      image: pradapjackie/allure-reports-generation:1.0
+    env:
+      ALLURE_RESULTS: allure-results
+      ALLURE_REPORT: allure-report
+      ALLURE_HISTORY: allure-history
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Download all test results
+      uses: actions/download-artifact@v4
+      with:
+        path: allure-results/
+        pattern: allure-results-*
+        merge-multiple: true
+        
+    - name: Download previous Allure history (if exists)
+      uses: actions/download-artifact@v4
+      with:
+        path: allure-history/
+        pattern: allure-history
+        
+    - name: Create history directory
+      run: mkdir -p allure-history
+      
+    - name: Generate Allure report with history
+      run: |
+        if [ -d "allure-history" ] && [ "$(ls -A allure-history)" ]; then
+          echo "Generating Allure report with history..."
+          allure generate allure-results --clean --report-dir allure-report --history-dir allure-history
+        else
+          echo "Generating Allure report without history (first run)..."
+          allure generate allure-results --clean --report-dir allure-report
+        fi
+          
+    - name: Upload Allure report
+      uses: actions/upload-artifact@v4
+      with:
+        name: allure-report
+        path: allure-report/
+        retention-days: 1
+        
+    - name: Upload Allure history for next run
+      uses: actions/upload-artifact@v4
+      with:
+        name: allure-history
+        path: allure-report/history/
+        retention-days: 90
+
+  # Stage 3: Deploy to GitHub Pages
+  deploy:
+    name: Deploy to GitHub Pages
+    needs: generate-report
+    runs-on: ubuntu-latest
+    if: always()
+    permissions:
+      pages: write
+      id-token: write
+    concurrency:
+      group: "pages"
+      cancel-in-progress: false
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Download Allure report
+      uses: actions/download-artifact@v4
+      with:
+        name: allure-report
+        path: allure-report/
+        
+    - name: Setup Pages
+      uses: actions/configure-pages@v4
+      
+    - name: Upload to GitHub Pages
+      uses: actions/upload-pages-artifact@v4
+      with:
+        path: allure-report/
+        
+    - name: Deploy to GitHub Pages
+      id: deployment
+      uses: actions/deploy-pages@v4

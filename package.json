@@ -1,0 +1,65 @@
+{
+  "name": "playwright-tests-assessment",
+  "version": "1.0.0",
+  "description": "Playwright TypeScript automation for Sauce Labs demo website",
+  "main": "index.js",
+  "scripts": {
+    "test": "playwright test",
+    "test:headed": "playwright test --headed",
+    "test:headless": "playwright test",
+    "test:ui": "playwright test --ui",
+    "test:ui:chrome": "playwright test --ui --project=chromium",
+    "test:ui:firefox": "playwright test --ui --project=firefox",
+    "test:ui:safari": "playwright test --ui --project=webkit",
+    "test:ui:mobile": "playwright test --ui --project='Mobile Chrome'",
+    "test:ui:all": "playwright test --ui --project=chromium --project=firefox --project=webkit --project='Mobile Chrome' --project='Mobile Safari'",
+    "test:ui:browser": "playwright test --ui --project",
+    "test:chrome:headless": "playwright test --project=chromium",
+    "test:chrome:headed": "playwright test --project=chromium --headed",
+    "test:debug": "playwright test --debug",
+    "report": "playwright show-report",
+    "report:open": "playwright show-report",
+    "report:open:html": "playwright show-report",
+    "report:open:allure": "npm run allure:open",
+    "report:open:pakoda": "npm run pakoda:open",
+    "allure:generate": "docker run --rm -v \"$PWD/allure-results:/app/allure-results\" -v \"$PWD/allure-report:/app/allure-report\" pradapjackie/allure-reports-generation:1.0 allure generate allure-results --clean",
+    "allure:open": "allure open allure-report",
+    "allure:serve": "allure serve allure-results",
+    "allure:clear": "rm -rf allure-results allure-report",
+    "pakoda:open": "open pakoda-report/index.html",
+    "pakoda:clear": "rm -rf pakoda-report",
+    "test:allure": "playwright test && npm run allure:generate",
+    "test:reports": "playwright test && npm run allure:generate && echo '✅ Allure report generated' && echo '✅ Pakoda report generated'",
+    "test:ci": "npx playwright test --reporter=allure-playwright",
+    "allure:ci": "docker run --rm -v \"$PWD/allure-results:/app/allure-results\" -v \"$PWD/allure-report:/app/allure-report\" pradapjackie/allure-reports-generation:1.0 allure generate allure-results --clean --report-dir allure-report",
+    "allure:history": "docker run --rm -v \"$PWD/allure-results:/app/allure-results\" -v \"$PWD/allure-report:/app/allure-report\" -v \"$PWD/allure-history:/app/allure-history\" pradapjackie/allure-reports-generation:1.0 allure generate allure-results --clean --report-dir allure-report --history-dir allure-history",
+
+    "install:browsers": "playwright install",
+    "codegen": "playwright codegen",
+    "lint": "eslint . --ext .ts",
+    "lint:fix": "eslint . --ext .ts --fix"
+  },
+  "keywords": [
+    "playwright",
+    "typescript",
+    "automation",
+    "testing",
+    "sauce-labs"
+  ],
+  "author": "Test Automation Engineer",
+  "license": "MIT",
+  "devDependencies": {
+    "@playwright/test": "^1.40.0",
+    "@types/node": "^20.10.0",
+    "@typescript-eslint/eslint-plugin": "^6.13.0",
+    "@typescript-eslint/parser": "^6.13.0",
+                    "allure-commandline": "^2.24.1",
+        "allure-playwright": "^2.9.0",
+        "pakoda-report-playwright": "^1.1.7",
+        "eslint": "^8.54.0",
+    "typescript": "^5.3.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
