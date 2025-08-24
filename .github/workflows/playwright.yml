@@ -81,10 +81,38 @@ jobs:
       id: test-run
       timeout-minutes: 10
       run: |
+        echo "Running tests for: ${{ inputs.browsers }}"
+        
+        # Run tests using configured reporters from playwright.config.ts
         if [ "${{ inputs.browsers }}" = "all" ]; then
-          npx playwright test --reporter=allure-playwright
+          npx playwright test
         else
-          npx playwright test --project="${{ inputs.browsers }}" --reporter=allure-playwright
+          npx playwright test --project="${{ inputs.browsers }}"
+        fi
+        
+        # Verify Allure results were created
+        echo "Checking Allure results..."
+        if [ -d "allure-results" ]; then
+          echo "✅ Allure results directory exists"
+          echo "Files in allure-results:"
+          ls -la allure-results/
+          echo "JSON files count: $(find allure-results/ -name '*.json' -type f | wc -l)"
+          
+          # Check if we have actual test results
+          json_files=$(ls allure-results/*.json 2>/dev/null | head -1)
+          if [ -n "$json_files" ] && [ -f "$json_files" ]; then
+            echo "✅ Test result files found"
+            echo "Sample result file content:"
+            head -10 "$json_files"
+          else
+            echo "❌ No test result files found in allure-results!"
+          fi
+        else
+          echo "❌ Allure results directory NOT created!"
+          echo "Current directory contents:"
+          ls -la
+          echo "Looking for any test-related files:"
+          find . -name "*.json" -o -name "*test*" -o -name "*result*" | head -10
         fi
       
     - name: Check test exit status
@@ -137,29 +165,57 @@ jobs:
     - name: Download all test results
       uses: actions/download-artifact@v4
       with:
-        path: allure-results/
-        pattern: allure-results-*
-        merge-multiple: true
+        name: allure-results
+        path: ./allure-results/
         
     - name: Pull Allure Docker image
       run: docker pull pradapjackie/allure-reports-generation:1.0
         
     - name: Generate Allure report
       run: |
-        # Try Docker first
-        if docker run --rm \
+        echo "=== GENERATING ALLURE REPORT ==="
+        
+        # Check if we have allure-results
+        if [ ! -d "allure-results" ] || [ -z "$(ls -A allure-results/ 2>/dev/null)" ]; then
+          echo "❌ No allure-results found! Cannot generate report."
+          exit 1
+        fi
+        
+        echo "Allure results found:"
+        ls -la allure-results/
+        
+        # Try Docker approach first
+        echo "Attempting Docker generation..."
+        if sudo docker run --rm \
           -v "$PWD:/app" \
           -w /app \
           pradapjackie/allure-reports-generation:1.0 \
           allure generate allure-results --clean -o allure-report; then
-          echo "Docker approach successful"
+          echo "✅ Docker generation successful"
         else
-          echo "Docker failed, trying command line"
-          # Install and use Allure command line
+          echo "❌ Docker failed, trying command line fallback..."
+          
+          # Install Allure command line
           curl -o allure-2.24.1.tgz -Ls https://repo.maven.apache.org/maven2/io/qameta/allure/allure-commandline/2.24.1/allure-commandline-2.24.1.tgz
-          tar -zxvf allure-2.24.1.tgz -C /opt/
-          ln -s /opt/allure-2.24.1/bin/allure /usr/local/bin/allure
+          sudo tar -zxvf allure-2.24.1.tgz -C /opt/
+          sudo ln -s /opt/allure-2.24.1/bin/allure /usr/local/bin/allure
+          
+          # Generate report
           allure generate allure-results --clean -o allure-report
+          echo "✅ Command line generation completed"
+        fi
+        
+        # Verify report was created
+        if [ -d "allure-report" ] && [ -f "allure-report/index.html" ]; then
+          echo "✅ Allure report generated successfully!"
+          echo "Report contents:"
+          ls -la allure-report/
+          echo "Report size: $(du -sh allure-report/)"
+        else
+          echo "❌ Allure report generation failed!"
+          echo "Available directories:"
+          ls -la
+          exit 1
         fi
           
     - name: Upload Allure report
@@ -176,7 +232,7 @@ jobs:
     runs-on: ubuntu-latest
     if: always()
     environment:
-      name: github-gitpages
+      name: github-pages
     permissions:
       pages: write
       id-token: write
