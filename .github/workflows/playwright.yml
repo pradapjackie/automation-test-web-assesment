@@ -68,9 +68,16 @@ jobs:
         wget --spider https://www.saucedemo.com/ || echo "wget also failed"
         echo "Network test completed"
       
-    - name: Verify test setup
+    - name: Verify test setup and allure-playwright
       run: |
         echo "Verifying Playwright setup for ${{ inputs.browsers }}..."
+        echo "Checking allure-playwright installation..."
+        npm list allure-playwright || echo "allure-playwright not found in dependencies"
+        
+        echo "Checking playwright config..."
+        cat playwright.config.ts | grep -A 10 "allure-playwright" || echo "allure-playwright not found in config"
+        
+        echo "Listing tests..."
         if [ "${{ inputs.browsers }}" = "all" ]; then
           npx playwright test --list || echo "Test listing failed"
         else
@@ -80,8 +87,16 @@ jobs:
     - name: Run tests
       id: test-run
       timeout-minutes: 10
+      env:
+        CI: true
+        ALLURE_RESULTS_DIR: allure-results
       run: |
         echo "Running tests for: ${{ inputs.browsers }}"
+        echo "Environment: CI=$CI"
+        echo "Allure results will be saved to: $ALLURE_RESULTS_DIR"
+        
+        # Ensure allure-results directory exists
+        mkdir -p allure-results
         
         # Run tests using configured reporters from playwright.config.ts
         if [ "${{ inputs.browsers }}" = "all" ]; then
@@ -96,23 +111,27 @@ jobs:
           echo "✅ Allure results directory exists"
           echo "Files in allure-results:"
           ls -la allure-results/
-          echo "JSON files count: $(find allure-results/ -name '*.json' -type f | wc -l)"
           
-          # Check if we have actual test results
-          json_files=$(ls allure-results/*.json 2>/dev/null | head -1)
-          if [ -n "$json_files" ] && [ -f "$json_files" ]; then
-            echo "✅ Test result files found"
-            echo "Sample result file content:"
-            head -10 "$json_files"
+          # Count JSON files
+          json_count=$(find allure-results/ -name '*.json' -type f | wc -l)
+          echo "JSON files count: $json_count"
+          
+          if [ "$json_count" -gt 0 ]; then
+            echo "✅ Test result files found ($json_count files)"
+            echo "Sample files:"
+            find allure-results/ -name '*.json' -type f | head -3
           else
-            echo "❌ No test result files found in allure-results!"
+            echo "❌ No JSON test result files found in allure-results!"
+            echo "Directory contents:"
+            find allure-results/ -type f | head -10
+            exit 1
           fi
         else
           echo "❌ Allure results directory NOT created!"
+          echo "This means Playwright tests may have failed to run or allure-playwright reporter failed"
           echo "Current directory contents:"
           ls -la
-          echo "Looking for any test-related files:"
-          find . -name "*.json" -o -name "*test*" -o -name "*result*" | head -10
+          exit 1
         fi
       
     - name: Check test exit status
@@ -141,11 +160,19 @@ jobs:
       if: always()
       with:
         name: allure-results
+        path: allure-results/
+        retention-days: 30
+        
+    - name: Upload other test artifacts
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: test-artifacts
         path: |
-          allure-results/
           test-results/
           screenshots/
           videos/
+          playwright-report/
         retention-days: 30
 
   # Stage 2: Generate Allure Report
@@ -166,7 +193,7 @@ jobs:
       uses: actions/download-artifact@v4
       with:
         name: allure-results
-        path: ./allure-results/
+        path: .
         
     - name: Pull Allure Docker image
       run: docker pull pradapjackie/allure-reports-generation:1.0
