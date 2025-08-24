@@ -81,13 +81,17 @@ jobs:
       id: test-run
       timeout-minutes: 10
       run: |
+        echo "Starting test execution..."
         if [ "${{ inputs.browsers }}" = "all" ]; then
           echo "Running tests on all browsers..."
-          npx playwright test --reporter=allure-playwright
+          npx playwright test --reporter=allure-playwright --reporter=list
         else
           echo "Running tests on ${{ inputs.browsers }}..."
-          npx playwright test --project="${{ inputs.browsers }}" --reporter=allure-playwright
+          npx playwright test --project="${{ inputs.browsers }}" --reporter=allure-playwright --reporter=list
         fi
+        
+        echo "Test execution completed. Checking allure-results..."
+        ls -la allure-results/ || echo "No allure-results directory created"
       
     - name: Check test exit status
       if: always()
@@ -150,6 +154,14 @@ jobs:
         echo "Directory contents:"
         find . -name "*allure*" -type d || echo "No allure directories found"
         
+        # Count test results
+        echo "=== Test Results Count ==="
+        if [ -d "allure-results" ]; then
+          echo "Total allure-results files: $(ls allure-results/*.json 2>/dev/null | wc -l)"
+          echo "Result files:"
+          ls -la allure-results/*.json 2>/dev/null || echo "No JSON result files found"
+        fi
+        
     - name: Pull Allure Docker image
       run: docker pull pradapjackie/allure-reports-generation:1.0
       
@@ -164,6 +176,14 @@ jobs:
     - name: Generate Allure report
       run: |
         echo "Generating Allure report..."
+        
+        # Check allure-results content first
+        echo "=== Allure Results Content ==="
+        ls -la allure-results/
+        echo "=== Sample Result File ==="
+        if [ -f "allure-results/$(ls allure-results/*.json | head -1)" ]; then
+          head -20 "allure-results/$(ls allure-results/*.json | head -1)"
+        fi
         
         # Try Docker first
         echo "Attempting with Docker..."
@@ -181,6 +201,14 @@ jobs:
         
         echo "Report generated successfully!"
         ls -la allure-report/
+        
+        # Check generated report structure
+        echo "=== Generated Report Structure ==="
+        find allure-report/ -type f -name "*.html" | head -5
+        echo "=== Report Index ==="
+        if [ -f "allure-report/index.html" ]; then
+          grep -i "test" allure-report/index.html | head -10
+        fi
           
     - name: Upload Allure report
       uses: actions/upload-artifact@v4

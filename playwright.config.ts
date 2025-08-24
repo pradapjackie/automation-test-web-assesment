@@ -25,7 +25,12 @@ export default defineConfig({
     ['allure-playwright', { 
       outputFolder: 'allure-results',
       detail: true,
-      suiteTitle: false
+      suiteTitle: false,
+      testCaseId: true,
+      testCaseName: true,
+      testCaseStatus: true,
+      testCaseDuration: true,
+      testCaseRetries: true
     }],
     ['pakoda-report-playwright', { outputDir: 'pakoda-report' }]
   ],
