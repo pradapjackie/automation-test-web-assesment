@@ -1,10 +1,8 @@
 name: Playwright Tests with Allure Reports
 
+# Manual workflow - only runs when manually triggered
+# To run: Go to Actions tab → Select this workflow → Click "Run workflow"
 on:
-  push:
-    branches: [ main, develop ]
-  pull_request:
-    branches: [ main, develop ]
   workflow_dispatch:
     inputs:
       browsers:
@@ -188,6 +186,7 @@ jobs:
     permissions:
       pages: write
       id-token: write
+      contents: read
     concurrency:
       group: "pages"
       cancel-in-progress: false
@@ -202,8 +201,17 @@ jobs:
         name: allure-report
         path: allure-report/
         
+    - name: Check GitHub Pages status
+      run: |
+        echo "Checking if GitHub Pages is available..."
+        echo "Repository: ${{ github.repository }}"
+        echo "Event: ${{ github.event_name }}"
+        echo "Branch: ${{ github.ref_name }}"
+        
     - name: Setup Pages
       uses: actions/configure-pages@v4
+      with:
+        enablement: true
       
     - name: Upload to GitHub Pages
       uses: actions/upload-pages-artifact@v4
