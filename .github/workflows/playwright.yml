@@ -142,15 +142,32 @@ jobs:
         
     - name: Pull Allure Docker image
       run: docker pull pradapjackie/allure-reports-generation:1.0
+      
+    - name: Install Allure command line (fallback)
+      run: |
+        echo "Installing Allure command line as fallback..."
+        curl -o allure-2.24.1.tgz -Ls https://repo.maven.apache.org/maven2/io/qameta/allure/allure-commandline/2.24.1/allure-commandline-2.24.1.tgz
+        tar -zxvf allure-2.24.1.tgz -C /opt/
+        ln -s /opt/allure-2.24.1/bin/allure /usr/local/bin/allure
+        echo "Allure command line installed"
         
     - name: Generate Allure report
       run: |
         echo "Generating Allure report..."
-        docker run --rm \
+        
+        # Try Docker first
+        echo "Attempting with Docker..."
+        if docker run --rm \
+          --platform linux/amd64 \
           -v "$PWD:/app" \
           -w /app \
           pradapjackie/allure-reports-generation:1.0 \
+          allure generate allure-results --clean -o allure-report; then
+          echo "Docker approach successful!"
+        else
+          echo "Docker approach failed, using command line fallback..."
           allure generate allure-results --clean -o allure-report
+        fi
         
         echo "Report generated successfully!"
         ls -la allure-report/
