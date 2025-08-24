@@ -195,6 +195,9 @@ jobs:
     needs: generate-report
     runs-on: ubuntu-latest
     if: always()
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
     permissions:
       pages: write
       id-token: write
@@ -219,6 +222,7 @@ jobs:
         echo "Repository: ${{ github.repository }}"
         echo "Event: ${{ github.event_name }}"
         echo "Branch: ${{ github.ref_name }}"
+        echo "Target URL: https://pradapjackie.github.io/automation-test-web-assesment/"
         
     - name: Setup Pages
       uses: actions/configure-pages@v4
@@ -233,3 +237,11 @@ jobs:
     - name: Deploy to GitHub Pages
       id: deployment
       uses: actions/deploy-pages@v4
+      
+    - name: Verify deployment
+      run: |
+        echo "Deployment completed!"
+        echo "Your Allure reports are now available at:"
+        echo "https://pradapjackie.github.io/automation-test-web-assesment/"
+        echo "Deployment ID: ${{ steps.deployment.outputs.deployment_id }}"
+        echo "Deployment URL: ${{ steps.deployment.outputs.deployment_url }}"
