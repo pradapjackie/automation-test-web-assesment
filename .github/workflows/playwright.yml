@@ -69,10 +69,10 @@ jobs:
         wget --spider https://www.saucedemo.com/ || echo "wget also failed"
         echo "Network test completed"
       
-    - name: Run simple test first
+    - name: Verify test setup
       run: |
-        echo "Running a simple test to verify setup..."
-        npx playwright test --list || echo "Test listing failed"
+        echo "Verifying Playwright setup for ${{ matrix.browser }}..."
+        npx playwright test --list --project="${{ matrix.browser }}" || echo "Test listing failed"
         
     - name: Run tests on ${{ matrix.browser }}
       id: test-run
