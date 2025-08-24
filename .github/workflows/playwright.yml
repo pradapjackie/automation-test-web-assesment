@@ -81,34 +81,10 @@ jobs:
       id: test-run
       timeout-minutes: 10
       run: |
-        echo "=== TEST EXECUTION DEBUG ==="
-        echo "Starting test execution for: ${{ inputs.browsers }}"
-        
-        # Run tests with detailed output
         if [ "${{ inputs.browsers }}" = "all" ]; then
-          echo "Running tests on all browsers..."
-          npx playwright test --reporter=allure-playwright --reporter=list --verbose
+          npx playwright test --reporter=allure-playwright
         else
-          echo "Running tests on ${{ inputs.browsers }}..."
-          npx playwright test --project="${{ inputs.browsers }}" --reporter=allure-playwright --reporter=list --verbose
-        fi
-        
-        echo "=== POST-TEST CHECK ==="
-        echo "Test execution completed. Checking results..."
-        
-        # Check if allure-results were created
-        if [ -d "allure-results" ]; then
-          echo "✅ allure-results directory exists"
-          echo "Files in allure-results:"
-          ls -la allure-results/
-          echo "JSON result files:"
-          find allure-results/ -name "*.json" -type f | wc -l
-        else
-          echo "❌ allure-results directory NOT created!"
-          echo "Current directory contents:"
-          ls -la
-          echo "Looking for any allure-related files:"
-          find . -name "*allure*" -type d 2>/dev/null || echo "No allure directories found"
+          npx playwright test --project="${{ inputs.browsers }}" --reporter=allure-playwright
         fi
       
     - name: Check test exit status
@@ -165,73 +141,16 @@ jobs:
         pattern: allure-results-*
         merge-multiple: true
         
-    - name: List downloaded results
-      run: |
-        echo "Checking downloaded test results..."
-        ls -la allure-results/ || echo "No allure-results directory found"
-        echo "Directory contents:"
-        find . -name "*allure*" -type d || echo "No allure directories found"
-        
-        # Count test results
-        echo "=== Test Results Count ==="
-        if [ -d "allure-results" ]; then
-          echo "Total allure-results files: $(ls allure-results/*.json 2>/dev/null | wc -l)"
-          echo "Result files:"
-          ls -la allure-results/*.json 2>/dev/null || echo "No JSON result files found"
-        fi
-        
     - name: Pull Allure Docker image
       run: docker pull pradapjackie/allure-reports-generation:1.0
-      
-    - name: Install Allure command line (fallback)
-      run: |
-        echo "Installing Allure command line as fallback..."
-        curl -o allure-2.24.1.tgz -Ls https://repo.maven.apache.org/maven2/io/qameta/allure/allure-commandline/2.24.1/allure-commandline-2.24.1.tgz
-        tar -zxvf allure-2.24.1.tgz -C /opt/
-        ln -s /opt/allure-2.24.1/bin/allure /usr/local/bin/allure
-        echo "Allure command line installed"
         
     - name: Generate Allure report
       run: |
-        echo "=== DEBUGGING ALLURE GENERATION ==="
-        
-        echo "1. Current directory: $(pwd)"
-        echo "2. Allure results directory:"
-        ls -la allure-results/ || echo "❌ No allure-results directory!"
-        
-        echo "3. Allure results files:"
-        find allure-results/ -name "*.json" -type f | head -5 || echo "❌ No JSON files found!"
-        
-        echo "4. Sample allure result content:"
-        if [ -f "allure-results/$(ls allure-results/*.json 2>/dev/null | head -1)" ]; then
-          echo "First result file:"
-          head -5 "allure-results/$(ls allure-results/*.json | head -1)"
-        else
-          echo "❌ No result files to examine!"
-        fi
-        
-        echo "5. Attempting Docker generation:"
         docker run --rm \
           -v "$PWD:/app" \
           -w /app \
           pradapjackie/allure-reports-generation:1.0 \
-          allure generate allure-results --clean -o allure-report || {
-            echo "❌ Docker generation failed!"
-            echo "6. Trying command line fallback:"
-            allure generate allure-results --clean -o allure-report || echo "❌ Command line also failed!"
-          }
-        
-        echo "7. Final check:"
-        ls -la allure-report/ || echo "❌ Still no allure-report!"
-        
-        if [ -f "allure-report/index.html" ]; then
-          echo "✅ SUCCESS: Allure report generated"
-          echo "Report size: $(du -sh allure-report/)"
-        else
-          echo "❌ FAILED: Allure report not generated properly"
-          echo "Available files:"
-          find . -name "*allure*" -type d 2>/dev/null || echo "No allure directories found"
-        fi
+          allure generate allure-results --clean -o allure-report
           
     - name: Upload Allure report
       uses: actions/upload-artifact@v4
@@ -266,60 +185,10 @@ jobs:
         name: allure-report
         path: allure-report/
         
-    - name: Verify Allure report content
-      run: |
-        echo "=== Verifying Allure Report Content ==="
-        echo "Current directory: $(pwd)"
-        echo "Allure report directory contents:"
-        ls -la allure-report/ || echo "No allure-report directory found"
-        
-        if [ -d "allure-report" ]; then
-          echo "HTML files found:"
-          find allure-report/ -name "*.html" -type f
-          echo "Index file content preview:"
-          if [ -f "allure-report/index.html" ]; then
-            head -20 allure-report/index.html
-          else
-            echo "No index.html found!"
-          fi
-        fi
-        
-    - name: Check GitHub Pages status
-      run: |
-        echo "Checking if GitHub Pages is available..."
-        echo "Repository: ${{ github.repository }}"
-        echo "Event: ${{ github.event_name }}"
-        echo "Branch: ${{ github.ref_name }}"
-        echo "Target URL: https://pradapjackie.github.io/automation-test-web-assesment/"
-        echo "Repository owner: ${{ github.repository_owner }}"
-        echo "Repository name: ${{ github.event.repository.name }}"
-        
     - name: Setup Pages
       uses: actions/configure-pages@v4
       with:
         enablement: true
-        
-    - name: Check repository access
-      run: |
-        echo "Checking repository access..."
-        echo "Repository: ${{ github.repository }}"
-        echo "Actor: ${{ github.actor }}"
-        echo "Workflow: ${{ github.workflow }}"
-        
-    - name: Check for conflicting workflows
-      run: |
-        echo "Checking for conflicting workflows..."
-        if [ -f ".github/workflows/pages-build-deployment.yml" ]; then
-          echo "⚠️  Found default pages workflow - this might conflict!"
-          echo "Consider removing: .github/workflows/pages-build-deployment.yml"
-        else
-          echo "✅ No default pages workflow found"
-        fi
-        
-    - name: Clear existing Pages content
-      run: |
-        echo "Clearing any existing Pages content..."
-        rm -rf .github/pages || echo "No existing pages content"
         
     - name: Upload to GitHub Pages
       uses: actions/upload-pages-artifact@v4
@@ -329,20 +198,3 @@ jobs:
     - name: Deploy to GitHub Pages
       id: deployment
       uses: actions/deploy-pages@v4
-      
-    - name: Verify deployment
-      run: |
-        echo "Deployment completed!"
-        echo "Your Allure reports are now available at:"
-        echo "https://pradapjackie.github.io/automation-test-web-assesment/"
-        echo "Deployment ID: ${{ steps.deployment.outputs.deployment_id }}"
-        echo "Deployment URL: ${{ steps.deployment.outputs.deployment_url }}"
-        
-    - name: Show final status
-      run: |
-        echo "=== DEPLOYMENT SUMMARY ==="
-        echo "✅ Allure report generated"
-        echo "✅ Report uploaded to GitHub Pages"
-        echo "✅ Deployment completed"
-        echo "🌐 Live URL: https://pradapjackie.github.io/automation-test-web-assesment/"
-        echo "📊 View your test reports at the URL above"
