@@ -461,30 +461,3 @@ deploy:
     pages: write
     id-token: write
 ```
-
-### Workflow Features
-
-#### Browser Matrix Strategy
-- **Parallel Execution**: 5 browsers run simultaneously
-- **Fail-Fast**: Continues testing even if one browser fails
-- **Artifact Collection**: Results from all browsers combined
-
-#### History Management
-- **Download History**: Retrieves previous execution history
-- **Generate with Trends**: Creates reports with historical data
-- **Upload History**: Preserves history for next run
-
-#### Artifact Retention
-- **Test Results**: 30-day retention
-- **Allure Reports**: 1-day retention 
-- **History Data**: 90-day retention
-
-### Manual Workflow Trigger
-
-#### Browser Selection Options
-- **All Browsers**: Complete test suite
-- **Chrome Only**: Chromium browser tests
-- **Firefox Only**: Firefox browser tests
-- **Safari Only**: WebKit browser tests
-- **Mobile Only**: Mobile browser tests
- 
