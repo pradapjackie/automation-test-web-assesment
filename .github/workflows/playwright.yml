@@ -124,14 +124,16 @@ jobs:
             echo "❌ No JSON test result files found in allure-results!"
             echo "Directory contents:"
             find allure-results/ -type f | head -10
-            exit 1
+            echo "WARNING: Will upload empty allure-results for debugging"
           fi
         else
           echo "❌ Allure results directory NOT created!"
           echo "This means Playwright tests may have failed to run or allure-playwright reporter failed"
           echo "Current directory contents:"
           ls -la
-          exit 1
+          echo "Creating empty allure-results directory for artifact upload"
+          mkdir -p allure-results
+          echo "Empty directory created" > allure-results/debug.txt
         fi
       
     - name: Check test exit status
@@ -180,7 +182,7 @@ jobs:
     name: Generate Allure Report
     needs: test
     runs-on: ubuntu-latest
-    if: always()
+    if: always() && (needs.test.result == 'success' || needs.test.result == 'failure')
     env:
       ALLURE_RESULTS: allure-results
       ALLURE_REPORT: allure-report
@@ -189,11 +191,21 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
       
-    - name: Download all test results
+    - name: Download allure results
       uses: actions/download-artifact@v4
       with:
         name: allure-results
-        path: .
+        path: allure-results/
+        
+    - name: Debug downloaded artifacts
+      run: |
+        echo "=== DEBUGGING DOWNLOADED ARTIFACTS ==="
+        echo "Current directory contents:"
+        ls -la
+        echo "Allure results directory:"
+        ls -la allure-results/ || echo "No allure-results directory found"
+        echo "Looking for any JSON files:"
+        find . -name "*.json" -type f | head -10
         
     - name: Pull Allure Docker image
       run: docker pull pradapjackie/allure-reports-generation:1.0
