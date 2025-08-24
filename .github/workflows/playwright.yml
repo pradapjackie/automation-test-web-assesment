@@ -147,6 +147,7 @@ jobs:
     - name: Generate Allure report
       run: |
         docker run --rm \
+          --platform linux/amd64 \
           -v "$PWD:/app" \
           -w /app \
           pradapjackie/allure-reports-generation:1.0 \
