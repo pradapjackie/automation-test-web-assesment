@@ -1,6 +1,6 @@
-# 🧪 Playwright TypeScript Test Suite Documentation
+# Playwright TypeScript Test Suite Documentation
 
-## 📋 Table of Contents
+## Table of Contents
 
 1. [Overview](#overview)
 2. [Framework Architecture](#framework-architecture)
@@ -11,20 +11,18 @@
 7. [Allure Reporting](#allure-reporting)
 8. [Docker Integration](#docker-integration)
 9. [CI/CD Pipeline](#cicd-pipeline)
-10. [Troubleshooting](#troubleshooting)
-11. [Best Practices](#best-practices)
 
-## 🎯 Overview
+## Overview
 
 This test suite automates the **Sauce Labs Demo Website** using Playwright with TypeScript. The framework focuses on the **successful checkout flow** scenario, implementing the Page Object Model (POM) design pattern for maintainable and scalable test automation.
 
-### 🎯 Test Coverage
+### Test Coverage
 - **Primary Focus**: Complete successful checkout flow with 3 random items
 - **User Journey**: Login → Select Products → Add to Cart → Checkout → Complete Order
 - **Browser Support**: Chrome, Firefox, Safari, Mobile Chrome, Mobile Safari
 - **No Negative Scenarios**: Focuses only on successful user flows
 
-## 🏗️ Framework Architecture
+## Framework Architecture
 
 ### Design Patterns
 - **Page Object Model (POM)**: Separates test logic from page interactions
@@ -57,7 +55,7 @@ playwright-tests-assessment/
 └── README.md                 # Project overview
 ```
 
-## 📋 Prerequisites
+## Prerequisites
 
 ### System Requirements
 - **Node.js**: Version 18.0.0 or higher
@@ -69,7 +67,7 @@ playwright-tests-assessment/
 - **Playwright Browsers**: Automatically installed during setup
 - **System Dependencies**: Playwright handles OS-specific requirements
 
-## 🚀 Installation & Setup
+## Installation & Setup
 
 ### 1. Clone Repository
 ```bash
@@ -92,7 +90,7 @@ npm run install:browsers
 npm run test:chrome:headless
 ```
 
-## 🧪 Test Suite Structure
+## Test Suite Structure
 
 ### Core Test Files
 
@@ -246,7 +244,7 @@ export class AllureUtils {
 }
 ```
 
-## 🏃‍♂️ Running Tests
+## Running Tests
 
 ### Basic Test Execution
 
@@ -329,7 +327,7 @@ npm run test:debug
 npm run codegen
 ```
 
-## 📊 Allure Reporting
+## Allure Reporting
 
 ### Report Generation
 
@@ -386,7 +384,7 @@ npm run report:open
 - **Categories**: Test result classification
 - **Timeline**: Execution history
 
-## 🐳 Docker Integration
+## Docker Integration
 
 ### Custom Allure Image
 
@@ -422,14 +420,14 @@ docker run --rm \
   allure generate allure-results --clean --report-dir allure-report --history-dir allure-history
 ```
  
-## 🚀 CI/CD Pipeline
+## CI/CD Pipeline
 
 ### GitHub Actions Workflow
 
 #### Workflow File
 - **Location**: `.github/workflows/playwright.yml`
-- **Trigger**: Push/PR to main/develop branches
-- **Manual Trigger**: Available with browser selection
+- **Trigger**: Manual workflow dispatch only
+- **Browser Selection**: Choose specific browser or run all browsers
 
 #### Three-Stage Pipeline
 
@@ -438,26 +436,76 @@ docker run --rm \
 test:
   name: Run Playwright Tests
   runs-on: ubuntu-latest
-  strategy:
-    matrix:
-      browser: ["chromium", "firefox", "webkit", "Mobile Chrome", "Mobile Safari"]
+  timeout-minutes: 15
+  
+  # Browser selection via workflow_dispatch inputs
+  # Options: all, chromium, firefox, webkit, mobile
 ```
+
+**Key Features:**
+- **Manual Trigger**: Only runs when manually triggered via Actions tab
+- **Browser Selection**: Choose specific browser or run all browsers
+- **Comprehensive Setup**: Node.js 18, npm ci, Playwright browsers
+- **Network Testing**: Verifies connectivity to target website
+- **Allure Integration**: Uses allure-playwright reporter from playwright.config.ts
+- **Artifact Upload**: Uploads allure-results, test-results, screenshots, videos
 
 ##### Stage 2: Report Generation
 ```yaml
 generate-report:
   name: Generate Allure Report
   needs: test
-  container:
-    image: pradapjackie/allure-reports-generation:1.0
+  runs-on: ubuntu-latest
+  if: always() && (needs.test.result == 'success' || needs.test.result == 'failure')
 ```
+
+**Key Features:**
+- **Docker First**: Uses custom image `pradapjackie/allure-reports-generation:1.0`
+- **Fallback Support**: Command line Allure if Docker fails
+- **Result Validation**: Verifies allure-results before generation
+- **Report Verification**: Confirms successful report creation
+- **Artifact Management**: Uploads generated report for deployment
 
 ##### Stage 3: Deployment
 ```yaml
 deploy:
   name: Deploy to GitHub Pages
   needs: generate-report
-  permissions:
-    pages: write
-    id-token: write
+  runs-on: ubuntu-latest
+  environment:
+    name: github-pages
 ```
+
+**Key Features:**
+- **GitHub Pages**: Deploys Allure reports to GitHub Pages
+- **Environment Configuration**: Uses github-pages environment
+- **Concurrency Control**: Prevents conflicting deployments
+- **Live Reports**: Reports accessible via GitHub Pages URL
+
+#### Workflow Inputs
+
+```yaml
+workflow_dispatch:
+  inputs:
+    browsers:
+      description: 'Select browsers to test'
+      required: false
+      default: 'all'
+      type: choice
+      options:
+        - all
+        - chromium
+        - firefox
+        - webkit
+        - mobile
+```
+
+#### Execution Flow
+
+1. **Manual Trigger**: Select workflow → Click "Run workflow" → Choose browser
+2. **Test Execution**: Runs Playwright tests with selected browser(s)
+3. **Result Collection**: Generates allure-results and other artifacts
+4. **Report Generation**: Creates Allure HTML report using Docker or CLI
+5. **GitHub Pages**: Deploys report to live URL for team access
+
+ 
