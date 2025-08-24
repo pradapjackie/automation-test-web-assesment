@@ -25,14 +25,15 @@ jobs:
     name: Run Playwright Tests
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    strategy:
-      fail-fast: false
-      matrix:
-        browser: ${{ fromJson('["chromium", "firefox", "webkit", "Mobile Chrome", "Mobile Safari"]') }}
+
 
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
+    
+    - name: Show selected browser
+      run: |
+        echo "Selected browser input: ${{ inputs.browsers }}"
     
     - name: Setup Node.js
       uses: actions/setup-node@v4
@@ -69,13 +70,24 @@ jobs:
       
     - name: Verify test setup
       run: |
-        echo "Verifying Playwright setup for ${{ matrix.browser }}..."
-        npx playwright test --list --project="${{ matrix.browser }}" || echo "Test listing failed"
+        echo "Verifying Playwright setup for ${{ inputs.browsers }}..."
+        if [ "${{ inputs.browsers }}" = "all" ]; then
+          npx playwright test --list || echo "Test listing failed"
+        else
+          npx playwright test --list --project="${{ inputs.browsers }}" || echo "Test listing failed"
+        fi
         
-    - name: Run tests on ${{ matrix.browser }}
+    - name: Run tests
       id: test-run
       timeout-minutes: 10
-      run: npx playwright test --project="${{ matrix.browser }}" --reporter=allure-playwright
+      run: |
+        if [ "${{ inputs.browsers }}" = "all" ]; then
+          echo "Running tests on all browsers..."
+          npx playwright test --reporter=allure-playwright
+        else
+          echo "Running tests on ${{ inputs.browsers }}..."
+          npx playwright test --project="${{ inputs.browsers }}" --reporter=allure-playwright
+        fi
       
     - name: Check test exit status
       if: always()
@@ -102,7 +114,7 @@ jobs:
       uses: actions/upload-artifact@v4
       if: always()
       with:
-        name: allure-results-${{ matrix.browser }}
+        name: allure-results-${{ inputs.browsers }}
         path: |
           allure-results/
           test-results/
