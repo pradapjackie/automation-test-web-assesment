@@ -197,7 +197,6 @@ jobs:
     if: always()
     environment:
       name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
     permissions:
       pages: write
       id-token: write
@@ -223,12 +222,21 @@ jobs:
         echo "Event: ${{ github.event_name }}"
         echo "Branch: ${{ github.ref_name }}"
         echo "Target URL: https://pradapjackie.github.io/automation-test-web-assesment/"
+        echo "Repository owner: ${{ github.repository_owner }}"
+        echo "Repository name: ${{ github.event.repository.name }}"
         
     - name: Setup Pages
       uses: actions/configure-pages@v4
       with:
         enablement: true
-      
+        
+    - name: Check repository access
+      run: |
+        echo "Checking repository access..."
+        echo "Repository: ${{ github.repository }}"
+        echo "Actor: ${{ github.actor }}"
+        echo "Workflow: ${{ github.workflow }}"
+        
     - name: Upload to GitHub Pages
       uses: actions/upload-pages-artifact@v4
       with:
@@ -245,3 +253,12 @@ jobs:
         echo "https://pradapjackie.github.io/automation-test-web-assesment/"
         echo "Deployment ID: ${{ steps.deployment.outputs.deployment_id }}"
         echo "Deployment URL: ${{ steps.deployment.outputs.deployment_url }}"
+        
+    - name: Show final status
+      run: |
+        echo "=== DEPLOYMENT SUMMARY ==="
+        echo "✅ Allure report generated"
+        echo "✅ Report uploaded to GitHub Pages"
+        echo "✅ Deployment completed"
+        echo "🌐 Live URL: https://pradapjackie.github.io/automation-test-web-assesment/"
+        echo "📊 View your test reports at the URL above"
